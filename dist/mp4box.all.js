@@ -2327,7 +2327,6 @@ var BoxParser = {
 		if (parseMethod) BoxParser[type+"TrackGroupTypeBox"].prototype.parse = parseMethod;
 	},
 	createUUIDBox: function(uuid, isFullBox, isContainerBox, parseMethod) {
-		console.log('Creating UUID box for UUID: ' + uuid);
 		BoxParser.UUIDs.push(uuid);
 		BoxParser.UUIDBoxes[uuid] = function(size) {
 			if (isFullBox) {
@@ -3597,6 +3596,29 @@ BoxParser.createBoxCtor("irot", function(stream) {
 BoxParser.createFullBoxCtor("ispe", function(stream) {
 	this.image_width = stream.readUint32();
 	this.image_height = stream.readUint32();
+});// file:src/parsing/itai.js
+BoxParser.createFullBoxCtor("itai", function(stream) {
+	this.TAI_timestamp_decimal = stream.readUint64();
+
+	var timestamp_microseconds = this.TAI_timestamp_decimal / 1000;
+	var timestamp_milliseconds = timestamp_microseconds / 1000;
+	var utcTimestamp = timestamp_milliseconds - 694656019000;
+	var date = new Date(utcTimestamp);
+	var dateString = date.toLocaleString('en-US', {
+		timeZone: 'UTC',
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+	});
+	this.TAI_timestamp_date = dateString;
+
+	status_bits = stream.readUint8();
+	this.sychronization_state = (status_bits >> 7) & 0x01;
+	this.timestamp_generation_failure = (status_bits >> 6) & 0x01;
+	this.timestamp_is_modified = (status_bits >> 5) & 0x01;
 });// file:src/parsing/kind.js
 BoxParser.createFullBoxCtor("kind", function(stream) {
 	this.schemeURI = stream.readCString();
@@ -3892,7 +3914,7 @@ BoxParser.createBoxCtor("rtp ", function(stream) {
 // file:src/parsing/saio.js
 BoxParser.createFullBoxCtor("saio", function(stream) {
 	if (this.flags & 0x1) {
-		this.aux_info_type = stream.readUint32();
+		this.aux_info_type = stream.readString(4);
 		this.aux_info_type_parameter = stream.readUint32();
 	}
 	var count = stream.readUint32();
@@ -3908,7 +3930,7 @@ BoxParser.createFullBoxCtor("saio", function(stream) {
 // file:src/parsing/saiz.js
 BoxParser.createFullBoxCtor("saiz", function(stream) {
 	if (this.flags & 0x1) {
-		this.aux_info_type = stream.readUint32();
+		this.aux_info_type = stream.readString(4);
 		this.aux_info_type_parameter = stream.readUint32();
 	}
 	this.default_sample_info_size = stream.readUint8();
@@ -4647,7 +4669,20 @@ BoxParser.createFullBoxCtor("subs", function(stream) {
 	}
 });
 
-// file:src/parsing/tenc.js
+// file:src/parsing/taic.js
+BoxParser.createFullBoxCtor("taic", function(stream) {
+	this.time_uncertainty = stream.readUint64();
+	this.clock_resolution = stream.readUint32();
+	this.clock_drift_rate = stream.readInt32();
+	var reserved_byte = stream.readUint8();
+	this.clock_type = (reserved_byte & 0xC0) >> 6;
+	
+	if (this.time_uncertainty === 0xffffffffffffffff) {
+		this.time_uncertainty = "unknown";
+	}
+
+
+});// file:src/parsing/tenc.js
 BoxParser.createFullBoxCtor("tenc", function(stream) {
 	stream.readUint8(); // reserved
 	if (this.version === 0) {
@@ -4975,7 +5010,7 @@ BoxParser.createFullBoxCtor("urn ", function(stream) {
 	}
 });
 
-// file:src/parsing/uuid/gimi/gimiImageItemComponentUUID.js
+// file:src/parsing/uuid/gimi/gimiComponentUUID.js
 BoxParser.createUUIDBox("12472f2315bf5289a78716e8bd1cf8dc", false, false, function(stream) {
   this.class = "Image Item Component UUID";
   this.number_of_components = stream.readUint32();
@@ -4985,14 +5020,10 @@ BoxParser.createUUIDBox("12472f2315bf5289a78716e8bd1cf8dc", false, false, functi
     var componentContentId = BoxParser.parseHex16(stream);
     this.components.push(componentContentId);
   }
-});// file:src/parsing/uuid/gimi/gimiItemUUIDProperty.js
+});// file:src/parsing/uuid/gimi/gimiItemUUID.js
 BoxParser.createUUIDBox("4a66efa7e541526c94279e77617feb7d", false, false, function(stream) {
   this.class = "Item UUID Property";
   this.contentId = BoxParser.parseHex16(stream);
-});// file:src/parsing/uuid/gimi/junk.js
-BoxParser.createUUIDBox("d337e9a39b1f4bd38aded8aed1ba3593", false, false, function(stream) {
-  console.log('Parsing junk box');
-  this.message = stream.readCString();
 });// file:src/parsing/uuid/piff/piffLsm.js
 BoxParser.createUUIDBox("a5d40b30e81411ddba2f0800200c9a66", true, false, function(stream) {
     this.LiveServerManifest = stream.readString(this.size - this.hdr_size)
