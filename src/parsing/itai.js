@@ -3,7 +3,8 @@ BoxParser.createFullBoxCtor("itai", function(stream) {
 
 	var timestamp_microseconds = this.TAI_timestamp_decimal / 1000;
 	var timestamp_milliseconds = timestamp_microseconds / 1000;
-	var utcTimestamp = timestamp_milliseconds - 694656019000;
+	tai_utc_offset = 37000; // 37 seconds (37,000 milliseconds)
+	var utcTimestamp = timestamp_milliseconds - tai_utc_offset;
 	var date = new Date(utcTimestamp);
 	var dateString = date.toLocaleString('en-US', {
 		timeZone: 'UTC',
