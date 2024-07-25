@@ -3598,11 +3598,21 @@ BoxParser.createFullBoxCtor("ispe", function(stream) {
 	this.image_height = stream.readUint32();
 });// file:src/parsing/itai.js
 BoxParser.createFullBoxCtor("itai", function(stream) {
-	this.TAI_timestamp_decimal = stream.readUint64();
+	var timestamp = stream.readUint64();
+	var date = timestamp_to_string(timestamp);
+	this.TAI_timestamp = timestamp + "  (" + date + ")";
 
-	var timestamp_microseconds = this.TAI_timestamp_decimal / 1000;
+	status_bits = stream.readUint8();
+	this.sychronization_state = (status_bits >> 7) & 0x01;
+	this.timestamp_generation_failure = (status_bits >> 6) & 0x01;
+	this.timestamp_is_modified = (status_bits >> 5) & 0x01;
+});
+
+function timestamp_to_string(timestamp) {
+	var timestamp_microseconds = timestamp / 1000;
 	var timestamp_milliseconds = timestamp_microseconds / 1000;
-	var utcTimestamp = timestamp_milliseconds - 694656019000;
+	tai_utc_offset = 37000; // 37 seconds (37,000 milliseconds)
+	var utcTimestamp = timestamp_milliseconds - tai_utc_offset;
 	var date = new Date(utcTimestamp);
 	var dateString = date.toLocaleString('en-US', {
 		timeZone: 'UTC',
@@ -3613,13 +3623,8 @@ BoxParser.createFullBoxCtor("itai", function(stream) {
 		minute: '2-digit',
 		second: '2-digit',
 	});
-	this.TAI_timestamp_date = dateString;
-
-	status_bits = stream.readUint8();
-	this.sychronization_state = (status_bits >> 7) & 0x01;
-	this.timestamp_generation_failure = (status_bits >> 6) & 0x01;
-	this.timestamp_is_modified = (status_bits >> 5) & 0x01;
-});// file:src/parsing/kind.js
+	return dateString;
+}// file:src/parsing/kind.js
 BoxParser.createFullBoxCtor("kind", function(stream) {
 	this.schemeURI = stream.readCString();
 	this.value = stream.readCString();
@@ -3934,7 +3939,7 @@ BoxParser.createFullBoxCtor("saiz", function(stream) {
 		this.aux_info_type_parameter = stream.readUint32();
 	}
 	this.default_sample_info_size = stream.readUint8();
-	var count = stream.readUint32();
+	this.count = stream.readUint32();
 	this.sample_info_size = [];
 	if (this.default_sample_info_size === 0) {
 		for (var i = 0; i < count; i++) {
