@@ -149,6 +149,7 @@ export function parseOneBox(
       } else {
         if (uuid in BoxRegistry.uuid) {
           box = new BoxRegistry.uuid[uuid](size);
+          box.uuid = uuid;
         } else {
           Log.warn('BoxParser', `Unknown UUID box type: '${uuid}'`);
           box = new Box(size);
